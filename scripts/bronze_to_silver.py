@@ -7,9 +7,7 @@ from pyspark.context import SparkContext
 from pyspark.sql import functions as F
 from pyspark.sql.types import StructType, StructField, StringType
 
-# ============================================================
 # 1. INITIALIZE GLUE JOB
-# ============================================================
 
 args = getResolvedOptions(sys.argv, ["JOB_NAME"])
 
@@ -21,9 +19,7 @@ job = Job(glueContext)
 job.init(args["JOB_NAME"], args)
 
 
-# ============================================================
 # 2. S3 LOCATIONS
-# ============================================================
 
 input_path = (
     "s3://aman-customer-data-lake-2026/"
@@ -41,9 +37,7 @@ quarantine_path = (
 )
 
 
-# ============================================================
 # 3. DEFINE EXPECTED COLUMNS
-# ============================================================
 
 columns = [
     "id",
@@ -70,9 +64,7 @@ numeric_columns = [
 ]
 
 
-# ============================================================
 # 4. DEFINE SOURCE SCHEMA INCLUDING CORRUPT RECORD FIELD
-# ============================================================
 
 raw_schema = StructType(
     [
@@ -84,9 +76,7 @@ raw_schema = StructType(
 )
 
 
-# ============================================================
 # 5. READ BRONZE NDJSON DATA
-# ============================================================
 
 df = (
     spark.read
@@ -97,9 +87,7 @@ df = (
 )
 
 
-# ============================================================
 # 6. BASIC DATA CLEANING
-# ============================================================
 
 # Trim whitespace and convert blank values to NULL
 
@@ -116,9 +104,7 @@ for column_name in columns:
     )
 
 
-# ============================================================
 # 7. NUMERIC TYPE CONVERSION
-# ============================================================
 
 # Preserve original values before casting
 
@@ -135,9 +121,7 @@ for column_name in numeric_columns:
     )
 
 
-# ============================================================
 # 8. DATA QUALITY VALIDATION
-# ============================================================
 
 reason_parts = []
 
@@ -194,9 +178,7 @@ df = df.withColumn(
 )
 
 
-# ============================================================
 # 9. IDENTIFY DUPLICATE IDS ACROSS THE ENTIRE INPUT
-# ============================================================
 
 duplicate_ids = (
     df
@@ -225,9 +207,7 @@ df = df.withColumn(
 )
 
 
-# ============================================================
 # 10. BUILD FINAL QUARANTINE REASONS
-# ============================================================
 
 df = df.withColumn(
     "quarantine_reason",
@@ -242,9 +222,7 @@ df = df.withColumn(
 )
 
 
-# ============================================================
 # 11. SEPARATE SILVER AND QUARANTINE RECORDS
-# ============================================================
 
 # Records with any rejection reason go to Quarantine
 
@@ -267,9 +245,7 @@ silver_df = (
 )
 
 
-# ============================================================
 # 12. CALCULATE RECORD COUNTS
-# ============================================================
 
 input_count = df.count()
 
@@ -293,11 +269,9 @@ silver_count = silver_df.count()
 quarantine_count = quarantine_df.count()
 
 
-# ============================================================
 # 13. PRINT DATA QUALITY REPORT
-# ============================================================
 
-print("========== DATA QUALITY REPORT ==========")
+print("DATA QUALITY REPORT")
 
 print("Input records:", input_count)
 
@@ -309,12 +283,10 @@ print("Silver records:", silver_count)
 
 print("Quarantine records:", quarantine_count)
 
-print("=========================================")
+print("==================")
 
 
-# ============================================================
 # 14. VERIFY RECORD COUNT RECONCILIATION
-# ============================================================
 
 if input_count != silver_count + quarantine_count:
 
@@ -326,9 +298,7 @@ if input_count != silver_count + quarantine_count:
 print("Record count reconciliation: PASSED")
 
 
-# ============================================================
 # 15. WRITE VALID RECORDS TO SILVER
-# ============================================================
 
 silver_df.write \
     .mode("overwrite") \
@@ -337,9 +307,7 @@ silver_df.write \
     .save(silver_path)
 
 
-# ============================================================
 # 16. WRITE INVALID RECORDS TO QUARANTINE
-# ============================================================
 
 quarantine_df.write \
     .mode("overwrite") \
@@ -348,9 +316,7 @@ quarantine_df.write \
     .save(quarantine_path)
 
 
-# ============================================================
 # 17. COMMIT GLUE JOB
-# ============================================================
 
 job.commit()
 
